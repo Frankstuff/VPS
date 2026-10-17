@@ -1,0 +1,64 @@
+name: Check VPS SSH connectivity
+
+on:
+  # Bootstrap this check before any workflow has been merged into main.
+  push:
+    branches: [learn-github-actions-deploys]
+    paths: [.github/workflows/check-ssh.yml]
+  # Available from the Actions UI once this file reaches the default branch.
+  workflow_dispatch:
+
+# The inline check needs neither repository access nor third-party actions.
+permissions: {}
+
+jobs:
+  check-ssh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Connect to the VPS and report its identity
+        shell: bash
+        env:
+          VPS_HOST: ${{ vars.VPS_HOST }}
+          VPS_USER: ${{ vars.VPS_USER }}
+          VPS_PORT: ${{ vars.VPS_PORT || '22' }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          # Never enable shell tracing: it would expose credential values.
+          umask 077
+
+          : "${VPS_HOST:?Set the VPS_HOST repository Actions variable}"
+          : "${VPS_USER:?Set the VPS_USER repository Actions variable}"
+          : "${VPS_SSH_PRIVATE_KEY:?Set the VPS_SSH_PRIVATE_KEY repository Actions secret}"
+          : "${VPS_SSH_KNOWN_HOSTS:?Set the VPS_SSH_KNOWN_HOSTS repository Actions secret}"
+          [[ "$VPS_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]] || { echo 'Invalid VPS_HOST'; exit 1; }
+          [[ "$VPS_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || { echo 'Invalid VPS_USER'; exit 1; }
+          [[ "$VPS_PORT" =~ ^[1-9][0-9]{0,4}$ ]] && (( VPS_PORT <= 65535 )) || { echo 'Invalid VPS_PORT'; exit 1; }
+
+          credentials=$(mktemp -d "$RUNNER_TEMP/vps-ssh.XXXXXX")
+          trap 'rm -rf -- "$credentials"' EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          chmod 700 "$credentials"
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" | tr -d '\r' > "$credentials/key"
+          printf '%s\n' "$VPS_SSH_KNOWN_HOSTS" | tr -d '\r' > "$credentials/known_hosts"
+          chmod 600 "$credentials/key" "$credentials/known_hosts"
+          unset VPS_SSH_PRIVATE_KEY VPS_SSH_KNOWN_HOSTS
+
+          ssh -F /dev/null -T \
+            -i "$credentials/key" -p "$VPS_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o IdentityAgent=none \
+            -o PasswordAuthentication=no \
+            -o KbdInteractiveAuthentication=no \
+            -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$credentials/known_hosts" \
+            -o GlobalKnownHostsFile=/dev/null \
+            -o ConnectTimeout=15 \
+            -o ConnectionAttempts=1 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=2 \
+            "$VPS_USER@$VPS_HOST" 'whoami && hostname'
