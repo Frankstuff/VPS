@@ -21,7 +21,7 @@ Open the URL Vite prints, normally `http://127.0.0.1:5173`. Edit `index.html`, s
 
 Review all six pages before publishing: `/`, `/pester-ai/`, `/sms/`, `/sms-terms/`, `/privacy/`, and `/contact/`. On `/sms/`, try both roles, change the schedule, and submit the example with the unchecked-by-default permissions selected. The resulting summary is temporary and does not enroll anyone.
 
-**Local review does not publish anything.** After approval, commit the source files and merge a pull request into `main`. The deployment workflow builds and tests pull requests, then builds and uploads `dist/` when the change reaches `main`. Pushing this feature branch alone does not deploy it. The VPS's Nginx root still needs to match `/var/www/pester-ai/current` before the first deployment; see [deployment setup](docs/deployment.md).
+**Local review does not publish anything.** To publish an update, commit the source files and merge a pull request into `main`. The deployment workflow builds and tests pull requests, then builds and uploads `dist/` when the change reaches `main`. Pushing a feature branch alone does not deploy the website. Nginx is configured to serve `/var/www/pester-ai/current`, with HTTPS and an HTTP redirect; see [deployment setup](docs/deployment.md).
 
 Dependencies are already installed in this workspace, so you can skip `npm ci` here. Run it when starting from a fresh clone or restoring dependencies from the lockfile.
 

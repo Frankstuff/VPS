@@ -1,10 +1,7 @@
 name: Prepare VPS website directory
 
 on:
-  # One-time launch trigger; removed after successful preparation.
-  push:
-    branches: [learn-github-actions-deploys]
-    paths: [.github/workflows/prepare-vps.yml, deploy/prepare-vps.sh]
+  # One-time server preparation, separate from ordinary website deployments.
   workflow_dispatch:
 
 permissions:

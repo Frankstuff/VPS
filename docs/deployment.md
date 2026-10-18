@@ -1,8 +1,12 @@
 # Deploy the website with GitHub Actions
 
-The workflow is [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml). The files are prepared in this checkout; adding them here does not install anything on the VPS or activate a workflow on GitHub. Complete the one-time setup below and get the source onto `main` before expecting automatic deployments.
+The workflow is [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml). Merging or pushing source changes to `main` builds, tests, and deploys the website to [pajakenterprises.com](https://pajakenterprises.com). Pull requests only build and test.
 
-For this repository, the existing SSH setup is `root@159.223.121.165:22`, with repository secrets `VPS_SSH_PRIVATE_KEY` and `VPS_SSH_KNOWN_HOSTS` and variables `VPS_HOST` and `VPS_USER`. Keep those existing credentials; the generic new-account/key instructions below are reference material, not steps to repeat. The remaining first-deployment task is to verify or prepare `/var/www/pester-ai/releases` and point the existing HTTPS Nginx server block at `/var/www/pester-ai/current`. Do that when publishing is authorized, preserving the existing Certbot certificate configuration. Local website development does not change the VPS.
+For this repository, the existing SSH setup is `root@159.223.121.165:22`, with repository secrets `VPS_SSH_PRIVATE_KEY` and `VPS_SSH_KNOWN_HOSTS` and variables `VPS_HOST` and `VPS_USER`. Keep those existing credentials; the generic new-account/key instructions below are reference material, not steps to repeat. Local website development does not change the VPS.
+
+On October 18, 2026, the [server preparation workflow](https://github.com/Frankstuff/VPS/actions/runs/39146114026) configured the existing Nginx site to serve `/var/www/pester-ai/current`, preserving the Certbot certificate and enabling HTTP-to-HTTPS redirects. It copied the previous website into a bootstrap release and kept `/var/www/html` intact. The original Nginx configuration is backed up under `/var/backups/pester-ai/`. Both hostnames were checked over HTTPS before publishing the replacement.
+
+The manual [Prepare VPS website directory workflow](../.github/workflows/prepare-vps.yml) runs [`deploy/prepare-vps.sh`](../deploy/prepare-vps.sh). It is specific to this server's original configuration, preserves an existing configured release, and restores the Nginx backup if its initial configuration checks fail. Ordinary deployments never edit Nginx or certificates. **Check VPS SSH and web server** remains a separate manual, read-only diagnostic workflow.
 
 ## What happens when you push
 

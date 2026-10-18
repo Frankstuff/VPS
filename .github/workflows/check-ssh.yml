@@ -1,11 +1,6 @@
 name: Check VPS SSH and web server
 
 on:
-  # Bootstrap this check before any workflow has been merged into main.
-  push:
-    branches: [learn-github-actions-deploys]
-    paths: [.github/workflows/check-ssh.yml]
-  # Available from the Actions UI once this file reaches the default branch.
   workflow_dispatch:
 
 # The inline check needs neither repository access nor third-party actions.
