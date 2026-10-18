@@ -75,6 +75,15 @@ jobs:
             printf 'Operating system: %s\n' "${PRETTY_NAME:-unknown}"
           fi
 
+          printf '\nNetwork interfaces and Internet route:\n'
+          if command -v ip >/dev/null 2>&1; then
+            ip -brief address show
+            ip -4 route show default
+            # Route lookup only; this does not send a packet to the destination.
+            ip -4 route get 1.1.1.1
+            ip -6 route show default
+          fi
+
           printf '\nNginx installation and service:\n'
           if command -v nginx >/dev/null 2>&1; then
             nginx -v 2>&1
