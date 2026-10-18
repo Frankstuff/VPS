@@ -103,6 +103,20 @@ jobs:
             ss -ltnp '( sport = :80 or sport = :443 )'
           fi
 
+          printf '\nLocal firewall status:\n'
+          if command -v ufw >/dev/null 2>&1; then
+            ufw status verbose
+          else
+            printf 'UFW is not installed; provider or other firewall rules may still apply.\n'
+          fi
+
+          printf '\nHTTPS certificate tooling:\n'
+          if command -v certbot >/dev/null 2>&1; then
+            certbot --version 2>&1
+          else
+            printf 'Certbot is not installed.\n'
+          fi
+
           printf '\nRelevant Nginx configuration (selected directives only):\n'
           if command -v nginx >/dev/null 2>&1; then
             nginx -T 2>/dev/null | awk '
