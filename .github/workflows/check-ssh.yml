@@ -1,0 +1,157 @@
+name: Check VPS SSH and web server
+
+on:
+  workflow_dispatch:
+
+# The inline check needs neither repository access nor third-party actions.
+permissions: {}
+
+jobs:
+  check-ssh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Inspect SSH, Nginx, and website prerequisites
+        shell: bash
+        env:
+          VPS_HOST: ${{ vars.VPS_HOST }}
+          VPS_USER: ${{ vars.VPS_USER }}
+          VPS_PORT: ${{ vars.VPS_PORT || '22' }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          # Never enable shell tracing: it would expose credential values.
+          umask 077
+
+          : "${VPS_HOST:?Set the VPS_HOST repository Actions variable}"
+          : "${VPS_USER:?Set the VPS_USER repository Actions variable}"
+          : "${VPS_SSH_PRIVATE_KEY:?Set the VPS_SSH_PRIVATE_KEY repository Actions secret}"
+          : "${VPS_SSH_KNOWN_HOSTS:?Set the VPS_SSH_KNOWN_HOSTS repository Actions secret}"
+          [[ "$VPS_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]] || { echo 'Invalid VPS_HOST'; exit 1; }
+          [[ "$VPS_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || { echo 'Invalid VPS_USER'; exit 1; }
+          [[ "$VPS_PORT" =~ ^[1-9][0-9]{0,4}$ ]] && (( VPS_PORT <= 65535 )) || { echo 'Invalid VPS_PORT'; exit 1; }
+
+          credentials=$(mktemp -d "$RUNNER_TEMP/vps-ssh.XXXXXX")
+          trap 'rm -rf -- "$credentials"' EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          chmod 700 "$credentials"
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" | tr -d '\r' > "$credentials/key"
+          printf '%s\n' "$VPS_SSH_KNOWN_HOSTS" | tr -d '\r' > "$credentials/known_hosts"
+          chmod 600 "$credentials/key" "$credentials/known_hosts"
+          unset VPS_SSH_PRIVATE_KEY VPS_SSH_KNOWN_HOSTS
+
+          ssh -F /dev/null -T \
+            -i "$credentials/key" -p "$VPS_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o IdentityAgent=none \
+            -o PasswordAuthentication=no \
+            -o KbdInteractiveAuthentication=no \
+            -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$credentials/known_hosts" \
+            -o GlobalKnownHostsFile=/dev/null \
+            -o ConnectTimeout=15 \
+            -o ConnectionAttempts=1 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=2 \
+            "$VPS_USER@$VPS_HOST" 'bash -s' <<'REMOTE'
+          # Read-only inspection: do not install, start, reload, or deploy anything.
+          set -u
+          export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+          printf 'SSH user: '
+          whoami
+          printf 'Hostname: '
+          hostname
+          if [[ -r /etc/os-release ]]; then
+            . /etc/os-release
+            printf 'Operating system: %s\n' "${PRETTY_NAME:-unknown}"
+          fi
+
+          printf '\nNetwork interfaces and Internet route:\n'
+          if command -v ip >/dev/null 2>&1; then
+            ip -brief address show
+            ip -4 route show default
+            # Route lookup only; this does not send a packet to the destination.
+            ip -4 route get 1.1.1.1
+            ip -6 route show default
+          fi
+
+          printf '\nNginx installation and service:\n'
+          if command -v nginx >/dev/null 2>&1; then
+            nginx -v 2>&1
+          else
+            printf 'Nginx executable not found.\n'
+          fi
+          if command -v systemctl >/dev/null 2>&1; then
+            systemctl show nginx --no-pager \
+              --property=LoadState,ActiveState,SubState,UnitFileState || true
+          fi
+          if command -v pgrep >/dev/null 2>&1; then
+            pgrep -x nginx || printf 'No processes named nginx.\n'
+          fi
+
+          printf '\nProcesses listening on HTTP/HTTPS ports:\n'
+          if command -v ss >/dev/null 2>&1; then
+            ss -ltnp '( sport = :80 or sport = :443 )'
+          fi
+
+          printf '\nLocal firewall status:\n'
+          if command -v ufw >/dev/null 2>&1; then
+            ufw status verbose
+          else
+            printf 'UFW is not installed; provider or other firewall rules may still apply.\n'
+          fi
+
+          printf '\nHTTPS certificate tooling:\n'
+          if command -v certbot >/dev/null 2>&1; then
+            certbot --version 2>&1
+          else
+            printf 'Certbot is not installed.\n'
+          fi
+
+          printf '\nRelevant Nginx configuration (selected directives only):\n'
+          if command -v nginx >/dev/null 2>&1; then
+            nginx -T 2>/dev/null | awk '
+              /^# configuration file / { print }
+              /^[[:space:]]*(server[[:space:]]*\{|listen|server_name|root|index|open_file_cache|ssl_certificate|ssl_certificate_key|include|location|try_files|return|access_log|error_log)/ { print }
+            '
+          fi
+
+          printf '\nEnabled site configuration targets:\n'
+          find /etc/nginx/sites-enabled -maxdepth 1 -type l -printf '%p -> %l\n'
+          printf '\nNginx log retention:\n'
+          if [[ -r /etc/logrotate.d/nginx ]]; then
+            cat /etc/logrotate.d/nginx
+          fi
+
+          printf '\nDeployment utilities:\n'
+          for utility in bash rsync curl flock mv readlink cmp; do
+            if command -v "$utility" >/dev/null 2>&1; then
+              printf '%s: %s\n' "$utility" "$(command -v "$utility")"
+            else
+              printf '%s: MISSING\n' "$utility"
+            fi
+          done
+
+          printf '\nExpected website directories:\n'
+          for path in /var/www/pester-ai /var/www/pester-ai/releases /var/www/pester-ai/current; do
+            if [[ -e "$path" || -L "$path" ]]; then
+              ls -ld -- "$path"
+            else
+              printf '%s: MISSING\n' "$path"
+            fi
+          done
+
+          printf '\nLocal HTTP/HTTPS checks for pajakenterprises.com:\n'
+          if command -v curl >/dev/null 2>&1; then
+            curl --silent --show-error --head --output /dev/null --max-time 5 \
+              --noproxy '*' -H 'Host: pajakenterprises.com' \
+              --write-out 'HTTP status: %{http_code}\n' http://127.0.0.1/ || true
+            curl --silent --show-error --head --output /dev/null --max-time 5 \
+              --noproxy '*' --resolve pajakenterprises.com:443:127.0.0.1 \
+              --write-out 'HTTPS status: %{http_code}\n' https://pajakenterprises.com/ || true
+          fi
+          REMOTE
