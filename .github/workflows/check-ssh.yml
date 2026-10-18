@@ -1,4 +1,4 @@
-name: Check VPS SSH connectivity
+name: Check VPS SSH and web server
 
 on:
   # Bootstrap this check before any workflow has been merged into main.
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Connect to the VPS and report its identity
+      - name: Inspect SSH, Nginx, and website prerequisites
         shell: bash
         env:
           VPS_HOST: ${{ vars.VPS_HOST }}
@@ -61,4 +61,72 @@ jobs:
             -o ConnectionAttempts=1 \
             -o ServerAliveInterval=15 \
             -o ServerAliveCountMax=2 \
-            "$VPS_USER@$VPS_HOST" 'whoami && hostname'
+            "$VPS_USER@$VPS_HOST" 'bash -s' <<'REMOTE'
+          # Read-only inspection: do not install, start, reload, or deploy anything.
+          set -u
+          export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+          printf 'SSH user: '
+          whoami
+          printf 'Hostname: '
+          hostname
+          if [[ -r /etc/os-release ]]; then
+            . /etc/os-release
+            printf 'Operating system: %s\n' "${PRETTY_NAME:-unknown}"
+          fi
+
+          printf '\nNginx installation and service:\n'
+          if command -v nginx >/dev/null 2>&1; then
+            nginx -v 2>&1
+          else
+            printf 'Nginx executable not found.\n'
+          fi
+          if command -v systemctl >/dev/null 2>&1; then
+            systemctl show nginx --no-pager \
+              --property=LoadState,ActiveState,SubState,UnitFileState || true
+          fi
+          if command -v pgrep >/dev/null 2>&1; then
+            pgrep -x nginx || printf 'No processes named nginx.\n'
+          fi
+
+          printf '\nProcesses listening on HTTP/HTTPS ports:\n'
+          if command -v ss >/dev/null 2>&1; then
+            ss -ltnp '( sport = :80 or sport = :443 )'
+          fi
+
+          printf '\nRelevant Nginx configuration (selected directives only):\n'
+          if command -v nginx >/dev/null 2>&1; then
+            nginx -T 2>/dev/null | awk '
+              /^# configuration file / { print }
+              /^[[:space:]]*(listen|server_name|root|index|open_file_cache|ssl_certificate)[[:space:]]/ { print }
+            '
+          fi
+
+          printf '\nDeployment utilities:\n'
+          for utility in bash rsync curl flock mv readlink cmp; do
+            if command -v "$utility" >/dev/null 2>&1; then
+              printf '%s: %s\n' "$utility" "$(command -v "$utility")"
+            else
+              printf '%s: MISSING\n' "$utility"
+            fi
+          done
+
+          printf '\nExpected website directories:\n'
+          for path in /var/www/pester-ai /var/www/pester-ai/releases /var/www/pester-ai/current; do
+            if [[ -e "$path" || -L "$path" ]]; then
+              ls -ld -- "$path"
+            else
+              printf '%s: MISSING\n' "$path"
+            fi
+          done
+
+          printf '\nLocal HTTP/HTTPS checks for pajakenterprises.com:\n'
+          if command -v curl >/dev/null 2>&1; then
+            curl --silent --show-error --head --output /dev/null --max-time 5 \
+              --noproxy '*' -H 'Host: pajakenterprises.com' \
+              --write-out 'HTTP status: %{http_code}\n' http://127.0.0.1/ || true
+            curl --silent --show-error --head --output /dev/null --max-time 5 \
+              --noproxy '*' --resolve pajakenterprises.com:443:127.0.0.1 \
+              --write-out 'HTTPS status: %{http_code}\n' https://pajakenterprises.com/ || true
+          fi
+          REMOTE
