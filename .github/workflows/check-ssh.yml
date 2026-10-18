@@ -121,8 +121,15 @@ jobs:
           if command -v nginx >/dev/null 2>&1; then
             nginx -T 2>/dev/null | awk '
               /^# configuration file / { print }
-              /^[[:space:]]*(listen|server_name|root|index|open_file_cache|ssl_certificate)[[:space:]]/ { print }
+              /^[[:space:]]*(server[[:space:]]*\{|listen|server_name|root|index|open_file_cache|ssl_certificate|ssl_certificate_key|include|location|try_files|return|access_log|error_log)/ { print }
             '
+          fi
+
+          printf '\nEnabled site configuration targets:\n'
+          find /etc/nginx/sites-enabled -maxdepth 1 -type l -printf '%p -> %l\n'
+          printf '\nNginx log retention:\n'
+          if [[ -r /etc/logrotate.d/nginx ]]; then
+            cat /etc/logrotate.d/nginx
           fi
 
           printf '\nDeployment utilities:\n'

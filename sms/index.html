@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f8f8f2" />
+  <meta name="description" content="Explore Pester AI's proposed SMS consent flow. This preview does not collect phone numbers, enroll users, or send messages." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <title>SMS signup preview — Pester AI</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+  <script type="module" src="/src/sms.ts"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header shell">
+    <div class="brand-lockup"><a class="wordmark" href="/" aria-label="Pester AI by Pajak Enterprises, home"><span class="brand-icon" aria-hidden="true">p</span>Pester<span class="wordmark-ai">.ai</span></a><span class="brand-parent">BY PAJAK ENTERPRISES</span></div>
+    <button class="menu-toggle" data-menu-button aria-expanded="false" aria-controls="main-navigation" type="button" hidden>Menu <span aria-hidden="true">☰</span></button>
+    <nav id="main-navigation" aria-label="Main navigation">
+      <a href="/pester-ai/">How it works</a>
+      <a href="/sms-terms/">SMS &amp; consent</a>
+      <a href="/contact/">Contact</a>
+      <a class="button button-small" href="/sms/" aria-current="page">Explore the preview <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main id="main">
+    <section class="page-heading shell compact-heading"><p class="eyebrow">SMS SIGNUP · INTERACTIVE PREVIEW</p><h1>Your agreement.<br><span class="highlight">Your choice.</span></h1><p class="page-lead">Both people get a say. Explore the settings and disclosures each participant would review before joining an accountability agreement.</p></section>
+    <div class="shell"><div class="notice"><span class="notice-dot" aria-hidden="true"></span><p><strong>This is an early preview.</strong> Enrollment is not open. No phone numbers are collected through this preview and no texts are sent.</p></div></div>
+    <section class="signup-layout shell section">
+      <div class="signup-card">
+        <div class="card-topline"><h2>Review an example pact</h2><span class="example-label">Preview only</span></div>
+        <p class="muted">Try the proposed signup steps with a fictional number. Choose a schedule, review the disclosures, and see your example agreement. Both people would need to accept before a real pact begins.</p>
+        <noscript><p class="notice">JavaScript is needed for this interactive preview. You can still read all program information and policies. Enrollment remains closed.</p></noscript>
+        <form id="signup-preview">
+          <fieldset id="preview-controls" disabled>
+            <legend class="sr-only">Example accountability agreement and SMS consent</legend>
+            <h3 class="form-section-label">01 / CHOOSE YOUR EXAMPLE SETTINGS</h3>
+            <label for="role">My role in this example</label>
+            <select id="role"><option value="partner">I'm supporting a friend</option><option value="focus">I'm working on my focus</option></select>
+            <div id="phone-fields">
+            <label for="example-phone">Example phone number for the SMS recipient</label>
+            <input id="example-phone" type="tel" value="+1 (202) 555-0142" readonly aria-describedby="phone-note" />
+            <p id="phone-note" class="field-note">A fictional number for this preview. Please don't enter your own or a friend's number.</p>
+            </div>
+            <p id="focus-channel-note" class="field-note" hidden>This role does not receive SMS. Optional advance notifications would need separate permission from you.</p>
+            <div class="field-row"><div><label for="maximum">Agreed daily maximum to the partner</label><select id="maximum"><option value="1">1 program text</option><option value="2" selected>2 program texts</option><option value="3">3 program texts</option><option value="5">5 program texts</option></select></div><div><label for="window">Agreed message window</label><select id="window"><option>9:00 AM–6:00 PM</option><option>10:00 AM–4:00 PM</option><option>6:00 PM–8:00 PM</option></select></div></div>
+            <label for="timezone">Time zone for the example agreement</label><select id="timezone"><option>Eastern Time</option><option>Central Time</option><option>Mountain Time</option><option>Pacific Time</option></select>
+            <label for="warning-mode">Advance warning for the person focusing</label><select id="warning-mode" aria-describedby="warning-note"><option value="notify">Notification before the partner alert</option><option value="none">No advance notification</option></select>
+            <p id="warning-note" class="field-note">This choice belongs to the person focusing. Advance notifications are separate from SMS and would require their permission. Nothing is sent in this preview.</p>
+            <p class="field-note">Illustrative settings, not active rules. Changes reset the checkboxes so you can review the new terms. Each participant would have to accept the same schedule before messaging begins.</p>
+            <div class="consent-block">
+              <h3 class="form-section-label">02 / REVIEW THE PERMISSIONS</h3>
+              <div id="sms-consent-fields"><label class="checkbox-label" for="sms-consent"><input id="sms-consent" type="checkbox" required /><span>I agree to receive recurring automated texts from <strong>Pester AI, operated by Franciszek Pajak under Pajak Enterprises</strong>, at my verified number about accountability alerts and agreement updates for the friend whose agreement I accept. Frequency varies with our agreement, up to <strong><span id="consent-frequency">2</span> program texts per day</strong> in the selected window, plus enrollment confirmations and STOP/HELP replies. There is no Pester AI fee for the proposed initial program; <strong>message and data rates may apply</strong>. Reply <strong>STOP</strong> to opt out or <strong>HELP</strong> for help. Consent is not a condition of purchase. <span class="preview-inline">Preview only: this choice is not recorded and does not enroll me.</span></span></label></div>
+              <p class="consent-links">Read the <a href="/sms-terms/" target="_blank" rel="noopener">SMS Terms (opens a new tab)</a> and <a href="/privacy/" target="_blank" rel="noopener">Privacy Policy (opens a new tab)</a>.</p>
+              <label class="checkbox-label" for="sharing-consent"><input id="sharing-consent" type="checkbox" required /><span id="sharing-text">In the planned service, I would accept this agreement and the agreed focus-status updates from my chosen friend. My acceptance would not enroll anyone else. This preview shares nothing.</span></label>
+            </div>
+            <button id="review-button" class="button full-width" type="submit">Review this example</button>
+          </fieldset>
+          <div id="preview-result" class="preview-result" tabindex="-1" role="status" hidden><strong>Example reviewed. No agreement was activated.</strong><dl id="review-details" class="review-details"></dl><p>Your choices stayed in this page. Nothing was sent or saved. A real enrollment would also require both participants' acceptance, verification of the SMS recipient's number, and a saved consent record.</p></div>
+        </form>
+      </div>
+      <aside class="signup-aside" aria-label="Example agreement summary">
+        <div class="agreement-summary"><span class="tiny-label">THE AGREEMENT AT A GLANCE</span><h2>A little structure.<br>A clear way out.</h2><dl><div><dt>Your role</dt><dd id="summary-role">I'm supporting a friend</dd></div><div><dt>Example frequency</dt><dd id="summary-frequency">Up to 2 program texts per day to the partner</dd></div><div><dt>Example timing</dt><dd id="summary-window">9:00 AM–6:00 PM (Eastern Time)</dd></div><div><dt>Advance warning</dt><dd id="summary-warning">An advance notification to the person focusing</dd></div><div><dt>When either person leaves</dt><dd>The shared agreement ends for both.</dd></div><div><dt>Pester AI service charge</dt><dd>Free. Carrier rates may apply.</dd></div></dl></div>
+        <div class="sms-example"><span id="sample-label" class="tiny-label">EXAMPLE SMS TO THE PARTNER</span><p id="sample-message">Pester AI: Alex missed the focus check-in you both agreed on. A little encouragement might help. Automated accountability alert. Reply STOP to opt out; HELP for help.</p></div>
+        <p class="small-note">Questions about the planned program?<br><a href="/contact/">Get in touch with Franciszek <span aria-hidden="true">↗</span></a></p>
+      </aside>
+    </section>
+  </main>
+  <footer class="site-footer shell">
+    <div class="footer-top">
+      <div><a class="wordmark" href="/">Pester<span class="wordmark-ai">.ai</span></a><p>A product of Pajak Enterprises.<br>Franciszek Pajak · Sole proprietor</p></div>
+      <div class="footer-links"><a href="/pester-ai/">How it works</a><a href="/sms/">SMS signup preview</a><a href="/sms-terms/">SMS Terms</a><a href="/privacy/">Privacy</a><a href="/contact/">Contact</a></div>
+    </div>
+    <div class="footer-bottom"><span>© 2026 Franciszek Pajak</span><span class="status-label"><span class="status-dot"></span> Early preview · SMS enrollment is not open</span></div>
+  </footer>
+</body>
+</html>

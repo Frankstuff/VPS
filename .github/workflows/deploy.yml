@@ -1,0 +1,59 @@
+name: Build and deploy website
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Finish an in-progress deployment before starting the next one.
+concurrency:
+  group: website-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  website:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Download repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build website
+        env:
+          # Public URL, baked into the browser bundle. Optional for the preview.
+          VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}
+        run: npm run build
+
+      - name: Test deployment and rollback
+        run: bash deploy/tests/activation.sh
+
+      - name: Upload and activate website
+        # Pull requests and manual runs on other branches only build and test.
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        env:
+          VPS_HOST: ${{ vars.VPS_HOST }}
+          VPS_USER: ${{ vars.VPS_USER }}
+          VPS_PORT: ${{ vars.VPS_PORT || '22' }}
+          DEPLOY_ROOT: ${{ vars.VPS_DEPLOY_PATH || '/var/www/pester-ai' }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://pajakenterprises.com' }}
+          RELEASE_ID: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: bash deploy/deploy.sh

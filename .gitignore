@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.context/
+.playwright-mcp/
+.convex/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.tsbuildinfo
+*.log

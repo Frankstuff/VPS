@@ -1,0 +1,48 @@
+# REFERENCE ONLY. Requires a valid certificate and existing Nginx installation.
+# Adapt this to the current server; do not add a duplicate server_name block.
+# Copy the CONTENTS of dist/ into the directory targeted by current first.
+
+server {
+    listen 80;
+    server_name pajakenterprises.com;
+    return 301 https://pajakenterprises.com$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name pajakenterprises.com;
+
+    # Example certificate paths. Verify these on your VPS before using them.
+    ssl_certificate /etc/letsencrypt/live/pajakenterprises.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/pajakenterprises.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    root /var/www/pester-ai/current;
+    index index.html;
+    # Observe symlink changes immediately, including if a parent config enables it.
+    open_file_cache off;
+
+    # Used to verify that the public domain serves the release just uploaded.
+    location = /__release.txt {
+        try_files $uri =404;
+        add_header Cache-Control "no-store" always;
+    }
+
+    # Content-hashed assets can be cached for a long time.
+    location /assets/ {
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    # Revalidate HTML so changes to disclosures reach returning visitors.
+    location ~ \.html$ {
+        try_files $uri =404;
+        add_header Cache-Control "no-cache";
+    }
+
+    # All routes are actual folders, with their own index.html.
+    # There is no SPA catch-all: nonexistent pages should return 404.
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
